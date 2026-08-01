@@ -1,0 +1,17 @@
+{
+  "openId_placeholder": {
+    "openid": "openId_placeholder",
+    "ticket": "64055E2C27BB912EAFDCC0A7FC80139C57F1B303973C0066F2BA57983F02323D",
+    "duid": "u=F6CB2E7A836D1FB9D06BDB79D2982BA8",
+    "updatedAt": "2026-07-30T04:24:27.073Z"
+  },
+  "v=0": {
+    "openid": "v=0",
+    "ticket": "708D70C2B179E2F91CC5ED1C2CCE362D",
+    "updatedAt": "2026-07-30T04:24:32.184Z"
+  },
+  "a931dcaed21314c7": {
+    "ticket": "64055E2C27BB912EAFDCC0A7FC80139C57F1B303973C0066F2BA57983F02323D",
+    "updatedAt": "2026-07-30T04:34:52.092Z"
+  }
+}

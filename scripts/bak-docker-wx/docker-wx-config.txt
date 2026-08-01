@@ -1,0 +1,43 @@
+# === docker-wx 部署配置备份 ===
+# 备份时间: 2026-07-29
+#
+# docker-wx 容器（fnOS 应用中心部署）:
+#   容器名: docker-wx
+#   监听端口: 8057
+#   bridge IP: 172.17.0.13
+#   Cmd: sed -i 's|redislink = 127.0.0.1:6379|redislink = redis:6379|' /app/conf/app.conf && /app/main
+#   内部 Redis: 通过 docker-wx 内部网络连接 redis:6379
+#   网络: docker-wx_default (172.30.0.x) + bridge (172.17.0.13) [手动加入]
+#
+# 微信登录态:
+#   wxid=zx491814 (昵称 Sunny, 应用宝 iPad 协议 8.1.84+)
+#   登录方式: GetQRCode 扫码 → CheckSecManualAuth
+#
+# HeartBeat 保活:
+#   Hermes cron (docker-wx-heartbeat) 每 10 分钟执行:
+#   curl -s -X POST http://172.17.0.13:8057/api/Login/HeartBeat?wxid=zx491814
+#
+# JSLogin 接口:
+#   POST http://172.17.0.13:8057/api/Wxapp/JSLogin
+#   Body: {wxid:'zx491814', appid:'<小程序appid>'}
+#   返回: {Code:0, Success:true, Data:{code:'32字符wxCode'}}
+#
+# 网络互通:
+#   sudo -n docker network connect bridge docker-wx
+#   让 docker-wx 加入 bridge 网络，qinglong 可从 172.17.0.13:8057 访问
+#
+# 源码改动 (docker-wx 仓库 https://github.com/zsunny6658/docker-wx):
+#   models/Login/GetQRCode.go: 移除第49行硬编码 Algorithm.IPadVersion
+#   Algorithm/Util.go: 版本号全部更新为 8.1.84+
+#   main 二进制: 31MB 静态链接 Go1.26.4 编译
+#
+# appid 映射:
+#   ztkd/feihe/jingjianx_all: wx7ddec43d9d27276a
+#   其他大部分脚本: wx22f6b0e53d3e8a7b
+#   txdt: wx7643d5f831302ab0
+#
+# SMTP 配置 (task_before.sh):
+#   SMTP_EMAIL='498364417@qq.com'
+#   SMTP_SERVER='smtp.qq.com:465'
+#   SMTP_PASSWORD='[见原始 task_before.sh]'
+#   SMTP_SSL=true

@@ -1,0 +1,25 @@
+{
+  "owNAX6gIkwmUl-mLyfpDECSQe0Uw": {
+    "fans_type": "526053",
+    "kdt_id": "18774683",
+    "open_id": "oHaG361uulcmjv8LvgG0HJ1ZbpL0",
+    "platform_fans_id": "24037621342",
+    "session_id": "YZ1533639781009543168YZlnnbVcpL",
+    "union_id": "o3DOL6EC--dUhtSAy5-2sPGcgi9k",
+    "user_id": "24037621342",
+    "user_privacy_dto": {
+      "agreement_signed": false,
+      "authorized_list": {
+        "18774683": "18774683_false_false"
+      },
+      "detail_authorized": false,
+      "kdt_id": 18774683,
+      "mobile_authorized": false
+    },
+    "view_track2": "wCrr9qYXNLg7bspGdgiBPA==",
+    "access_token": "22ebe08dc84a586740730d199a4731",
+    "refresh_token": "8464f05b85e564e961e49d1da8c27a",
+    "yz_user_id": "23623803198",
+    "updatedAt": "2026-08-02T16:56:57.928Z"
+  }
+}

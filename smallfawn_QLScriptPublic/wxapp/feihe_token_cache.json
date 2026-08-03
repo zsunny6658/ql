@@ -1,0 +1,35 @@
+{
+  "owNAX6mLanFM--9WJVDXfhFd3RaI": {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ4bXl4IiwiZXhwIjoxNzg1MDEwMTIwLCJpYXQiOjE3ODQ5OTU4NDIsInVzZXIiOiJ4bXl4QWVzVXNlckluZm86MXh4M0haMk11Rkc0bUo5aTJKNHJXUHVvcDY1dlM3dThOeFdSZ0dFMnQrRXYrOGFSaTI5cHB0U0JPbm84a24zR0pNb2hZQlNwN2gra01Ea0N1Yk9pU2NDcDJyMVpvbHNnb1FNaVhOTWFPNGdTbDNYQmdtU1lxMytiL0RLMDRuNytQQnBWTWJYRHlsUERBUzNpcm10eEo4UzhaYkpjV2YvVjFVbG4rQm9RUkhBPSJ9.HAqyA-jI-CmMgA-K7ytNPFOMhaBDJjCObJeMjkp4iC8",
+    "userInfo": {
+      "crmId": null,
+      "openId": "o6cdc4_5ajQvoEb2OEfEEQj0HmTc",
+      "unionId": "oQ9KswmrKNEpMXnkjbMMyGPYKzGc",
+      "loginStatus": 2,
+      "expireTime": "2026-07-26 04:04:42"
+    },
+    "updatedAt": "2026-07-25T16:10:42.403Z"
+  },
+  "'owNAX6mLanFM--9WJVDXfhFd3RaI'": {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ4bXl4IiwiZXhwIjoxNzg1MzQyNTQ3LCJpYXQiOjE3ODUzMjc3NzUsInVzZXIiOiJ4bXl4QWVzVXNlckluZm86cGxRSzNEalhmQXE0NFhCbk9ablZDK0hmcklJZm5yR1JhdnNmcnI3RitQZU9ZWGdjdHY2NTlpczJIN25VR0d1MXZQQXBhMjQ4UlQyZnU2OXNIQ2Q0UnVUUGY0Y2pwdEt1b296WDZ2bzFjNXZ1MUx2NUJ1Mk9DblduVDYwUFhPOWF3S25hdlZtaVd5Q2hBeUpjMHhvN2lQWEJ3NDZ3aDRZS0ZSMEtIVWlQRVNQaUdOTnQzSkhrOWhaZmlkdklOQTQweEx4bHNseFovOVhWU1dmNEdoQkVjQT09In0.-A6WFndSyf0OVce4n9xhBvkPW-syjPgVX1vBZHNcf2s",
+    "userInfo": {
+      "crmId": "CRM000000000193505614",
+      "openId": "o6cdc4xSe1J1RC0PvPbHPfioLyCY",
+      "unionId": "oQ9KswqQ2f-YwzuvH-3HqLNkUdUo",
+      "loginStatus": 2,
+      "expireTime": "2026-07-30 00:16:55"
+    },
+    "updatedAt": "2026-07-29T12:22:55.306Z"
+  },
+  "owNAX6gIkwmUl-mLyfpDECSQe0Uw": {
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ4bXl4IiwiZXhwIjoxNzg1NjczODcxLCJpYXQiOjE3ODU2NTk2MzIsInVzZXIiOiJ4bXl4QWVzVXNlckluZm86cGxRSzNEalhmQXE0NFhCbk9ablZDK0hmcklJZm5yR1JhdnNmcnI3RitQZU9ZWGdjdHY2NTlpczJIN25VR0d1MXZQQXBhMjQ4UlQyZnU2OXNIQ2Q0UnVUUGY0Y2pwdEt1b296WDZ2bzFjNXZ1MUx2NUJ1Mk9DblduVDYwUFhPOWF3S25hdlZtaVd5Q2hBeUpjMHhvN2lQWEJ3NDZ3aDRZS0ZSMEtIVWlQRVNQaUdOTnQzSkhrOWhaZmlkdklOQTQweEx4bHNseFovOVhWU1dmNEdoQkVjQT09In0.9ATYGchcHMLfEsH8o2t_2mTNXVschnDBQyPPq-CoQFc",
+    "userInfo": {
+      "crmId": "CRM000000000193505614",
+      "openId": "o6cdc4xSe1J1RC0PvPbHPfioLyCY",
+      "unionId": "oQ9KswqQ2f-YwzuvH-3HqLNkUdUo",
+      "loginStatus": 2,
+      "expireTime": "2026-08-02 20:27:52"
+    },
+    "updatedAt": "2026-08-02T08:33:52.113Z"
+  }
+}

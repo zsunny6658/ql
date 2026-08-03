@@ -160,17 +160,19 @@ class OppoTask {
             "content-type": "application/json",
             Origin: H5_API,
             Referer: SIGN_PAGE,
-            sessionId: this.sessionId || "",
-            NEWOPPOSID: this.encryptedSession || "",
-            openid: this.openId || "",
-            sa_distinct_id: this.openId || "",
             constToken: this.sessionId || "",
             s_channel: "program_wxmember",
             source_type: "503",
+            utm_source: "huiyuanwx",
+            utm_medium: "me_qiandao",
+            utm_campaign: "direct",
+            utm_term: "direct",
+            uc: "direct",
+            um: "direct",
+            us: "direct",
+            ut: "direct",
             Cookie: [
                 `NEWOPPOSID=${encodeURIComponent(this.encryptedSession || "")}`,
-                `sessionId=${encodeURIComponent(this.sessionId || "")}`,
-                `openid=${encodeURIComponent(this.openId || "")}`,
             ].join("; "),
             ...extra,
         };
@@ -286,7 +288,6 @@ class OppoTask {
         if (signed) return this.log("签到结果: 今日已签到，跳过");
         const result = await this.h5Request("POST", "/api/cn/oapi/marketing/cumulativeSignIn/signIn", {
             activityId: this.currentActivityId || SIGN_ACTIVITY_ID,
-            captchaCode: "",
             creditsAddActionId: CREDITS_ADD_ACTION_ID,
             business: BUSINESS,
         });

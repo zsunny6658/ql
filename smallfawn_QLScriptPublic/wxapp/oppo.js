@@ -36,6 +36,9 @@ const SIGN_PAGE =
     "https://hd.opposhop.cn/bp/b371ce270f7509f0?nightModelEnable=true&utm_source=huiyuanwx&utm_medium=me_qiandao";
 const USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) MicroMessenger/3.9.12 MiniProgramEnv/Windows WindowsWechat/WMPF";
+// H5 签到接口必须用真 iPhone UA(按 2026-08-07 抓包对齐, Windows UA 会被拒为"活动不存在")
+const H5_USER_AGENT =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.75(0x18004b54) NetType/WIFI Language/zh_CN miniProgram/wxe705c556754a1de2";
 
 function splitAccounts(value = "") {
     return String(value)
@@ -130,6 +133,7 @@ class OppoTask {
         this.sessionId = "";
         this.encryptedSession = "";
         this.openId = "";
+        this.saDistinctId = "";
         this.memberInfo = {};
         this.baseInfo = {};
     }
@@ -158,9 +162,11 @@ class OppoTask {
     h5Headers(extra = {}) {
         return {
             "content-type": "application/json",
+            "User-Agent": H5_USER_AGENT,
             Origin: H5_API,
             Referer: SIGN_PAGE,
             constToken: this.sessionId || "",
+            sa_distinct_id: this.saDistinctId || "",
             s_channel: "program_wxmember",
             source_type: "503",
             utm_source: "huiyuanwx",
@@ -253,15 +259,14 @@ class OppoTask {
 
     async getSignDetail() {
         const result = await this.h5Request("GET", "/api/cn/oapi/marketing/cumulativeSignIn/getSignInDetail", {
-            activityId: this.currentActivityId || SIGN_ACTIVITY_ID,
+            activityId: SIGN_ACTIVITY_ID,
             creditsAddActionId: CREDITS_ADD_ACTION_ID,
             business: BUSINESS,
         });
         const data = result.data || {};
-        // 服务端返回的真实 activityId 可能与硬编码不同, 以实际为准
-        if (data.activityId) {
-            this.currentActivityId = String(data.activityId);
-        }
+        // getSignInDetail 返回的 activityId 因 JS 大整数精度问题不可靠, 且历史上
+        // 该值(如 ...0600)与 signIn POST 真正接受的 seed(如 ...0560)不一致;
+        // 仅用于判断今日是否已签, 不覆盖 currentActivityId。
         return data;
     }
 
@@ -287,7 +292,7 @@ class OppoTask {
         const { signed } = await this.querySignDetail();
         if (signed) return this.log("签到结果: 今日已签到，跳过");
         const result = await this.h5Request("POST", "/api/cn/oapi/marketing/cumulativeSignIn/signIn", {
-            activityId: this.currentActivityId || SIGN_ACTIVITY_ID,
+            activityId: SIGN_ACTIVITY_ID,
             creditsAddActionId: CREDITS_ADD_ACTION_ID,
             business: BUSINESS,
         });

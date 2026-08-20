@@ -20,7 +20,7 @@ const MINI_APP_ID = "wx286efc12868f2559";
 const PACKAGE_VERSION = "580";
 const WX_SERVER_URL = (process.env.wx_server_url || "http://192.168.31.196:8787").replace(/\/$/, "");
 const WX_AUTH = process.env.wx_auth || "";
-const LOGIN_BASE = "https://hweb-personalcenter.huazhu.com/api";
+const LOGIN_BASE = "https://hweb-minilogin.huazhu.com/api";
 const PERSONAL_BASE = "https://hweb-personalcenter.huazhu.com";
 const SIGN_BASE = "https://appgw.huazhu.com";
 
@@ -70,7 +70,7 @@ async function request(options) {
     validateStatus: () => true,
     ...options,
     headers: {
-      "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.75(0x18004b50) NetType/WIFI Language/zh_CN",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 MicroMessenger MiniProgramEnv/Windows",
       Accept: "application/json, text/plain, */*",
       ...(options.headers || {}),
     },
@@ -78,76 +78,40 @@ async function request(options) {
   return { status: res.status, data: res.data, headers: res.headers || {} };
 }
 
+async function getWxCode(openid) {
+  if (!WX_AUTH) throw new Error("未配置 wx_auth，无法从 wx_server 获取 code");
+  const { status, data } = await request({
+    method: "POST",
+    url: `${WX_SERVER_URL}/wx/code`,
+    headers: { auth: WX_AUTH, "Content-Type": "application/json" },
+    data: { appid: MINI_APP_ID, openid },
+  });
+  const code = data?.data?.code || data?.code;
+  if (status !== 200 || !code) throw new Error(`获取 code 失败 HTTP ${status}: ${short(data)}`);
+  return code;
+}
 
 function wxHeaders(sId = "") {
-    const headers = {
-        miniProgram: "wxapp",
-        "Client-Platform": "WX-MP",
-        "devNo": "7669435148127349005",
-        abInfo: JSON.stringify({xcxFourFive:"B",HUA_AI_ENTRY_GROUP:"C",exclusivePrice:"B",xcxFourFive2025:"B",xcx45_tdy:true,xcx45_tiandanye:true}),
-        "content-type": "application/json",
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.75(0x18004b50) NetType/WIFI Language/zh_CN",
-        "mini-version": "3.0.59",
-        ssid: "1729393252029349075",
-        version: "",
-        "Referer": "https://servicewechat.com/" + MINI_APP_ID + "/583/page-frame.html",
-    };
-    if (sId) {
-        headers.sId = sId;
-    }
-    return headers;
+  return {
+    "Content-Type": "application/json",
+    "Client-Platform": "WX-MP",
+    version: "",
+    sId,
+    Referer: `https://servicewechat.com/${MINI_APP_ID}/${PACKAGE_VERSION}/page-frame.html`,
+  };
+}
+
+function signHeaders(sId = "") {
+  return {
+    "Content-Type": "application/json;charset=UTF-8",
+    Origin: "https://cdn.huazhu.com",
+    Referer: "https://cdn.huazhu.com/hzapp-signinfe/",
+    sId,
+  };
 }
 
 function ok(data) {
-  if (!data) return false;
-  if (typeof data === 'number') return data === 0 || data === 1;
-  if (data.success !== undefined) return !!data.success;
-  if (data.code !== undefined) return data.code === 0 || data.code === 200;
-  if (data.businessCode !== undefined && (String(data.businessCode) === '1000' || data.businessCode === 1000)) return true;
-  if (data.status !== undefined) return data.status === 200 || data.status === 'ok';
-  if (data.Result !== undefined) return !!data.Result;
-  if (data.statusCode !== undefined) return data.statusCode === 200 || data.statusCode === 0;
-  return true;
-}
-
-function signHeaders(sId) {
-  const headers = {
-    miniProgram: 'wxapp',
-    'content-type': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.75(0x18004b50) NetType/WIFI Language/zh_CN',
-    'Referer': 'https://servicewechat.com/' + MINI_APP_ID + '/' + PACKAGE_VERSION + '/page-frame.html',
-  };
-  if (sId) {
-    headers.sId = sId;
-  }
-  return headers;
-}
-
-async function getWxCode(openid) {
-  const wxServerUrl = process.env.wx_server_url;
-  const wxAuth = process.env.wx_auth;
-  if (wxServerUrl) {
-    const req = {
-      method: "POST",
-      url: `${wxServerUrl}/wx/code`,
-      headers: { "auth": wxAuth, "Content-Type": "application/json" },
-      data: { appid: MINI_APP_ID, openid: openid },
-    };
-    const { status, data } = await request(req);
-    const code = data?.data?.code || data?.code;
-    if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
-    return code;
-  }
-  const wxid = openid;
-  const { status, data } = await request({
-    method: "POST",
-    url: "http://172.17.0.13:8057/api/Wxapp/JSLogin",
-    headers: { "content-type": "application/json" },
-    data: { wxid, appid: MINI_APP_ID },
-  });
-  const code = data?.Data?.code || data?.code || data?.data?.code;
-  if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
-  return code;
+  return String(data?.businessCode) === "1000" || Number(data?.code) === 200;
 }
 
 class Huazhu {
@@ -191,9 +155,7 @@ class Huazhu {
       headers: wxHeaders(this.sId),
       data: {},
     });
-    if (status !== 200) throw new Error(`会员查询失败 HTTP ${status}: ${short(data)}`);
-    const bc = String(data?.businessCode || '');
-    if (data?.code !== 200 && bc !== '1000' && data?.Result !== true) throw new Error(`会员查询失败 HTTP ${status}: ${short(data)}`);
+    if (status !== 200 || !ok(data)) throw new Error(`会员查询失败 HTTP ${status}: ${short(data)}`);
 
     const basic = data?.content?.basicInfo || {};
     const level = data?.content?.standardLevelInfo || {};

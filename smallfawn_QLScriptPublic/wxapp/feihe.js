@@ -171,30 +171,30 @@ class Task {
         return result;
     }
 
-    async getWxCode(openid) {
-        const url = process.env.wx_server_url;
-        const auth = process.env.wx_auth;
-        if (url) {
-            return axios.post(url + "/wx/code", { appid: MINI_APP_ID, openid }, {
-                headers: { "auth": auth, "Content-Type": "application/json" },
-                timeout: 30000
-            }).then(res => {
-                const code = res.data?.data?.code || res.data?.code || res.data?.Data?.code || res.data?.data?.Data?.code || "";
-                return code;
-            });
-        }
-        const wxid = openid || "zx491814";
-        const { status, data } = await request({
-            method: "POST",
-            url: "http://172.17.0.13:8057/api/Wxapp/JSLogin",
-            headers: { "content-type": "application/json" },
-            data: { wxid, appid: MINI_APP_ID },
-        });
-        return data?.data?.code || data?.Data?.code || data?.code || "";
+    async getWxCode() {
+        const wxServerUrl = process.env.wx_server_url;
+        const wxAuth = process.env.wx_auth;
+        if (!wxServerUrl || !wxAuth) throw new Error("未配置 wx_server_url 或 wx_auth");
+
+        const { status, data } = await axios.post(
+            `${wxServerUrl.replace(/\/$/, "")}/wx/getuserinfo`,
+            { appid: MINI_APP_ID, openid: this.account },
+            {
+                headers: {
+                    auth: wxAuth,
+                    "content-type": "application/json",
+                },
+                timeout: 15000,
+                validateStatus: () => true,
+            }
+        );
+        const code = data?.code || data?.data?.code || data?.phoneCode || data?.data?.phoneCode;
+        if (status !== 200 || !code) throw new Error(`wx_server 获取code失败: HTTP ${status} ${JSON.stringify(data)}`);
+        return code;
     }
 
     async loginByCode() {
-        const code = await this.getWxCode(this.account);
+        const code = await this.getWxCode();
         const result = await this.request({
             apiPath: "/api/starMember/getUserToken",
             query: { code },
@@ -266,7 +266,8 @@ class Task {
             const points = complete.data?.awardSendPoints || complete.data?.awardPoint || "";
             $.log(`账号[${this.index}] 签到完成${points ? `，获得${points}积分` : ""}`);
         } else if (complete?.msg) {
-            $.log(`账号[${this.index}] 完成确认返回: ${complete.msg}`);
+            // msg 常常只是一串 trace id，带上 code 与完整响应才能判断是奖励已领还是真失败
+            $.log(`账号[${this.index}] 完成确认返回: code=${complete.code} ${JSON.stringify(complete).slice(0, 200)}`);
         }
     }
 }

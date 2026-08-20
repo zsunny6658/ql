@@ -166,7 +166,7 @@ class Task {
     async getLoginCode() {
         if (!process.env.wx_auth) throw new Error("缺少 wx_auth，无法从 wx_server 获取 code");
         const { data } = await wechat.getCode(this.openid);
-        const code = data?.Data?.code || data?.code || data?.data?.code;
+        const code = data?.code || data?.data?.code;
         if (!code) throw new Error(`wx_server 未返回 code: ${JSON.stringify(data)}`);
         return code;
     }

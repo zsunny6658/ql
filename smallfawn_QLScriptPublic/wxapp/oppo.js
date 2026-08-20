@@ -12,6 +12,13 @@ cron: 21 8 * * *
 wx_server_url  默认 http://192.168.31.196:8787
 wx_auth        必填，wx_server 鉴权值
 ------------------------------------------
+签到活动 id 会按月轮换（原来硬编码的 2061050217641549824 是 2026-06 那期，
+过期后 signIn 固定回「活动已经结束」，看着像活动下线，其实只是 id 换了）。
+现在改成运行时从签到 H5 页（小程序 web-view 打开的同一个积木页）里发现：
+页面把楼层配置直出在 HTML 里，形状是
+  {"type":"SignIn","attr":{…,"activityInfo":{"activityId":"…","activityName":"8月积分商城签到"}}}
+取那个 activityId 即当期活动；发现失败才回落到 FALLBACK 常量并明确提示。
+------------------------------------------
 */
 
 const { Env } = require("../tools/env.js");
@@ -29,16 +36,16 @@ const WX_SERVER_URL = (process.env.wx_server_url || "http://192.168.31.196:8787"
 const WX_AUTH = process.env.wx_auth || "";
 const MINI_API = "https://omoapplet-api-cn.heytap.com";
 const H5_API = "https://hd.opposhop.cn";
-const SIGN_ACTIVITY_ID = "2083099953777090560";
+const SIGN_ACTIVITY_ID = "2061050217641549824"; // 仅作回落：2026-06 那期，已过期
 const CREDITS_ADD_ACTION_ID = "1788913e6d9e4683b8b9ab0088733560";
 const BUSINESS = 1;
 const SIGN_PAGE =
     "https://hd.opposhop.cn/bp/b371ce270f7509f0?nightModelEnable=true&utm_source=huiyuanwx&utm_medium=me_qiandao";
 const USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) MicroMessenger/3.9.12 MiniProgramEnv/Windows WindowsWechat/WMPF";
-// H5 签到接口必须用真 iPhone UA(按 2026-08-07 抓包对齐, Windows UA 会被拒为"活动不存在")
+// 抓 H5 页面用手机端微信 UA，跟小程序 web-view 里的环境一致
 const H5_USER_AGENT =
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.75(0x18004b54) NetType/WIFI Language/zh_CN miniProgram/wxe705c556754a1de2";
+    "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Mobile Safari/537.36 MicroMessenger/8.0.30";
 
 function splitAccounts(value = "") {
     return String(value)
@@ -100,30 +107,20 @@ async function request(options) {
 }
 
 async function getWxCode(openid) {
-  const wxServerUrl = process.env.wx_server_url;
-  const wxAuth = process.env.wx_auth;
-  if (wxServerUrl) {
-    const req = {
-      method: "POST",
-      url: `${wxServerUrl}/wx/code`,
-      headers: { "auth": wxAuth, "Content-Type": "application/json" },
-      data: { appid: APP.appid, openid: openid },
-    };
-    const { status, data } = await request(req);
+    if (!WX_AUTH) throw new Error("未配置 wx_auth，无法从 wx_server 获取 code");
+    const { status, data } = await request({
+        method: "POST",
+        url: `${WX_SERVER_URL}/wx/code`,
+        headers: {
+            auth: WX_AUTH,
+            "content-type": "application/json",
+            Referer: `https://servicewechat.com/${APP.appid}/${APP.version}/page-frame.html`,
+        },
+        data: { appid: APP.appid, openid },
+    });
     const code = data?.data?.code || data?.code;
-    if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
+    if (status !== 200 || !code) throw new Error(`获取 code 失败 HTTP ${status}: ${short(data)}`);
     return code;
-  }
-  const wxid = openid;
-  const { status, data } = await request({
-    method: "POST",
-    url: "http://172.17.0.13:8057/api/Wxapp/JSLogin",
-    headers: { "content-type": "application/json" },
-    data: { wxid, appid: APP.appid },
-  });
-  const code = data?.Data?.code || data?.code || data?.data?.code;
-  if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
-  return code;
 }
 
 class OppoTask {
@@ -133,9 +130,10 @@ class OppoTask {
         this.sessionId = "";
         this.encryptedSession = "";
         this.openId = "";
-        this.saDistinctId = "";
         this.memberInfo = {};
         this.baseInfo = {};
+        this.signActivityId = SIGN_ACTIVITY_ID;
+        this.creditsAddActionId = CREDITS_ADD_ACTION_ID;
     }
 
     log(message) {
@@ -145,8 +143,8 @@ class OppoTask {
     miniHeaders(extra = {}) {
         return {
             "content-type": "application/json",
-            s_channel: "program_wxmember",
-            source_type: "503",
+            s_channel: "oppo",
+            source_type: "2",
             s_version: "010000",
             spCallSource: "oppohy",
             Referer: `https://servicewechat.com/${APP.appid}/${APP.version}/page-frame.html`,
@@ -162,23 +160,17 @@ class OppoTask {
     h5Headers(extra = {}) {
         return {
             "content-type": "application/json",
-            "User-Agent": H5_USER_AGENT,
             Origin: H5_API,
             Referer: SIGN_PAGE,
+            sessionId: this.sessionId || "",
+            NEWOPPOSID: this.encryptedSession || "",
+            openid: this.openId || "",
+            sa_distinct_id: this.openId || "",
             constToken: this.sessionId || "",
-            sa_distinct_id: this.saDistinctId || "",
-            s_channel: "program_wxmember",
-            source_type: "503",
-            utm_source: "huiyuanwx",
-            utm_medium: "me_qiandao",
-            utm_campaign: "direct",
-            utm_term: "direct",
-            uc: "direct",
-            um: "direct",
-            us: "direct",
-            ut: "direct",
             Cookie: [
                 `NEWOPPOSID=${encodeURIComponent(this.encryptedSession || "")}`,
+                `sessionId=${encodeURIComponent(this.sessionId || "")}`,
+                `openid=${encodeURIComponent(this.openId || "")}`,
             ].join("; "),
             ...extra,
         };
@@ -257,17 +249,54 @@ class OppoTask {
         this.log(`签到入口: ${data.signInIsStarted ? "已开启" : "未开启"}，连续/累计天数: ${data.signInDays ?? "-"}`);
     }
 
+    /**
+     * 从签到 H5 页发现当期活动 id（只读）。
+     * 积木页把楼层配置直出在 HTML 里，签到楼层是 {"type":"SignIn","attr":{…}}，
+     * 里面的 activityInfo.activityId 就是当期活动；顺带取一下 creditsAddActionId。
+     */
+    async discoverSignActivity() {
+        try {
+            const { status, data } = await request({
+                method: "GET",
+                url: SIGN_PAGE,
+                headers: { "User-Agent": H5_USER_AGENT, Accept: "text/html,*/*", Referer: SIGN_PAGE },
+                responseType: "text",
+                transformResponse: [(value) => value],
+            });
+            const html = typeof data === "string" ? data : "";
+            if (status !== 200 || !html) {
+                this.log(`签到活动发现: 页面不可读 HTTP ${status}，回落到内置 id`);
+                return;
+            }
+            const anchor = html.search(/"type"\s*:\s*"SignIn"/);
+            if (anchor < 0) {
+                this.log("签到活动发现: 页面里没有 SignIn 楼层（活动可能真的下线了），回落到内置 id");
+                return;
+            }
+            const segment = html.slice(anchor, anchor + 2000);
+            const idMatch = segment.match(/"activityInfo"\s*:\s*\{[^{}]*"activityId"\s*:\s*"(\d+)"/);
+            const nameMatch = segment.match(/"activityName"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            const actionMatch = segment.match(/"creditsAddActionId"\s*:\s*"([0-9a-f]{32})"/);
+            if (!idMatch) {
+                this.log("签到活动发现: SignIn 楼层里没有 activityId，回落到内置 id");
+                return;
+            }
+            this.signActivityId = idMatch[1];
+            if (actionMatch) this.creditsAddActionId = actionMatch[1];
+            const name = nameMatch ? nameMatch[1] : "";
+            this.log(`签到活动: ${name || "未命名"} (activityId=${this.signActivityId})`);
+        } catch (e) {
+            this.log(`签到活动发现失败: ${e.message || e}，回落到内置 id`);
+        }
+    }
+
     async getSignDetail() {
         const result = await this.h5Request("GET", "/api/cn/oapi/marketing/cumulativeSignIn/getSignInDetail", {
-            activityId: SIGN_ACTIVITY_ID,
-            creditsAddActionId: CREDITS_ADD_ACTION_ID,
+            activityId: this.signActivityId,
+            creditsAddActionId: this.creditsAddActionId,
             business: BUSINESS,
         });
-        const data = result.data || {};
-        // getSignInDetail 返回的 activityId 因 JS 大整数精度问题不可靠, 且历史上
-        // 该值(如 ...0600)与 signIn POST 真正接受的 seed(如 ...0560)不一致;
-        // 仅用于判断今日是否已签, 不覆盖 currentActivityId。
-        return data;
+        return result.data || {};
     }
 
     todayAward(detail = {}) {
@@ -292,8 +321,9 @@ class OppoTask {
         const { signed } = await this.querySignDetail();
         if (signed) return this.log("签到结果: 今日已签到，跳过");
         const result = await this.h5Request("POST", "/api/cn/oapi/marketing/cumulativeSignIn/signIn", {
-            activityId: SIGN_ACTIVITY_ID,
-            creditsAddActionId: CREDITS_ADD_ACTION_ID,
+            activityId: this.signActivityId,
+            captchaCode: "",
+            creditsAddActionId: this.creditsAddActionId,
             business: BUSINESS,
         });
         const data = result.data || {};
@@ -311,6 +341,7 @@ class OppoTask {
             await this.login();
             await this.queryMember();
             await this.queryEntrance();
+            await this.discoverSignActivity();
             await this.signIn();
             await this.queryMember();
         } catch (e) {

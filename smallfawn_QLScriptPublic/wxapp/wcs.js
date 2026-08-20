@@ -6,21 +6,20 @@ class WeChatCodeServer {
         this.auth = options.auth;
     }
     getCode(openid) {
-        const url = process.env.wx_server_url;
-        const auth = process.env.wx_auth;
-        if (url) {
-            return axios.post(url + "/wx/code", { appid: this.appid, openid }, {
-                headers: { "auth": auth, "Content-Type": "application/json" },
-                timeout: 30000
+        console.log('等待获取code:');
+        return new Promise((resolve, reject) => {
+            axios.post(this.serverUrl + '/wx/code', { appid: this.appid, openid }, {
+                headers: {
+                    'auth': this.auth
+                },
+                timeout: 30 * 1000
             }).then(res => {
-                const code = res.data?.data?.code || res.data?.code;
-                return { data: { Data: { code }, code }, status: res.status };
+                console.log('获取code成功:');
+                resolve(res);
+            }).catch(err => {
+                reject(err);
             });
-        }
-        return axios.post("http://172.17.0.13:8057/api/Wxapp/JSLogin",
-            { wxid: openid || "zx491814", appid: this.appid },
-            { headers: { "content-type": "application/json" }, timeout: 30000 }
-        );
+        });
     }
    
     cloudInit(openid) {

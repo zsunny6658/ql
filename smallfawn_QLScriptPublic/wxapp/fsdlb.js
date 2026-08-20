@@ -184,7 +184,7 @@ class Task {
 
     async getLoginCode() {
         const { data } = await wechat.getCode(this.openid);
-        const code = data?.Data?.code || data?.code || data?.data?.code;
+        const code = data?.code || data?.data?.code;
         if (!code) throw new Error(`wx_server 未返回 code: ${JSON.stringify(data)}`);
         return code;
     }

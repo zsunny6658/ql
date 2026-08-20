@@ -291,7 +291,7 @@ class AppContext {
     async getCode(openid) {
         if (!WX_AUTH) throw new Error("未配置 wx_auth，无法通过 wx_server 获取 code");
         const { data } = await this.wx.getCode(openid);
-        const code = data?.Data?.code || data?.code || data?.data?.code;
+        const code = data?.code || data?.data?.code;
         if (!code) throw new Error(`wx_server 未返回 code: ${JSON.stringify(data)}`);
         return code;
     }

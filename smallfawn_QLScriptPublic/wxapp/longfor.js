@@ -27,9 +27,9 @@ const path = require("path");
 const WeChatServer = require("./wcs.js");
 
 const MINI_APP_ID = "wx50282644351869da";
-const PAGE_VERSION = "513";
-const API_VERSION = "v2_1_0";
-const APP_VERSION = "2.1.0";
+const PAGE_VERSION = "506";
+const API_VERSION = "v1_25_0";
+const APP_VERSION = "1.25.0";
 const CHANNEL = "C2";
 const BU_CODE = "C20400";
 const BASE_HOST = "https://gw2c-hw-open.longfor.com/supera";
@@ -434,7 +434,7 @@ class Task {
         const checkData = {
             appId: MINI_APP_ID,
             thirdType: "WX_APPLET",
-            fingerprint: "6a6d5914GPOn7XTgvOGpofS4qwwOWDhC35RTt184",
+            fingerprint: "",
             authCode: await this.getLoginCode(),
         };
         const check = await this.miniPost(`${BASE_HOST}/mine/${API_VERSION}/publicApi/login/checkLoginType`, checkData);
@@ -443,9 +443,8 @@ class Task {
             authCode: await this.getLoginCode(),
             isNew: false,
             thirdType: "WX_APPLET",
-            fingerprint: "6a6d5914GPOn7XTgvOGpofS4qwwOWDhC35RTt184",
+            fingerprint: "",
             ticket: check?.ticket || "",
-            source: uuid(),
         };
         const login = await this.miniPost(`${BASE_HOST}/mine/${API_VERSION}/publicApi/login/loginByMiniApp`, loginData);
         this.applyToken(login);

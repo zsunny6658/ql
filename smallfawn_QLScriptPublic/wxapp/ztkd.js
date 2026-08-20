@@ -95,30 +95,16 @@ async function request(options) {
 }
 
 async function getWxCode(openid) {
-  const wxServerUrl = process.env.wx_server_url;
-  const wxAuth = process.env.wx_auth;
-  if (wxServerUrl) {
-    const req = {
-      method: "POST",
-      url: `${wxServerUrl}/wx/code`,
-      headers: { "auth": wxAuth, "Content-Type": "application/json" },
-      data: { appid: APP.appid, openid: openid },
-    };
-    const { status, data } = await request(req);
+    if (!WX_AUTH) throw new Error("未配置 wx_auth，无法从 wx_server 获取 code");
+    const { status, data } = await request({
+        method: "POST",
+        url: `${WX_SERVER_URL}/wx/code`,
+        headers: { auth: WX_AUTH, "content-type": "application/json" },
+        data: { appid: APP.appid, openid },
+    });
     const code = data?.data?.code || data?.code;
     if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
     return code;
-  }
-  const wxid = openid;
-  const { status, data } = await request({
-    method: "POST",
-    url: "http://172.17.0.13:8057/api/Wxapp/JSLogin",
-    headers: { "content-type": "application/json" },
-    data: { wxid, appid: APP.appid },
-  });
-  const code = data?.Data?.code || data?.code || data?.data?.code;
-  if (status !== 200 || !code) throw new Error(`获取code失败 HTTP ${status}: ${short(data)}`);
-  return code;
 }
 
 class ZtoExpress {

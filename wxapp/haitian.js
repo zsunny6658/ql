@@ -53,7 +53,7 @@ const BASE_API = "https://cmallapi.xkmm.cn/base-api";
 const TOKEN_CACHE_FILE = path.join(__dirname, "haitian_token_cache.json");
 // 手机号授权开关：默认开启(1)。海天的登录接口只吃手机号授权的加密数据，
 // 不想授权就置 0，然后自行抓包按 authorization#uuid 填变量。
-const PHONE_LOGIN = !/^(0|false|no|off)$/i.test(String(process.env.haitian_phone_login ?? "1"));
+const PHONE_LOGIN = !/(0|false|no|off)$/i.test(String(process.env.haitian_phone_login ?? "1"));
 const WX_SERVER_URL = (process.env.wx_server_url || "http://192.168.31.196:8787").replace(/\/+$/, "");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_7_15 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.70(0x1800462d) NetType/WIFI Language/zh_CN";
 
@@ -275,11 +275,11 @@ class Task {
      * 服务端解不出 phoneNumber，固定回 500 E131 登录失败。
      */
     async getPhoneAuthData() {
-        const result = await this.callWxServer("/wx/getphonenumber");
+        const result = await this.callWxServer("/wxapp/getPhoneNumber");
         const raw = result.raw || {};
         const edata = raw.encryptedData || result.encryptedData || "";
         const iv = raw.iv || result.iv || "";
-        if (!edata || !iv) throw new Error(`wx_server /wx/getphonenumber 未返回手机号加密数据: ${JSON.stringify(Object.keys(raw))}`);
+        if (!edata || !iv) throw new Error(`wx_server /wxapp/getPhoneNumber 未返回手机号加密数据: ${JSON.stringify(Object.keys(raw))}`);
         return { edata, iv };
     }
 

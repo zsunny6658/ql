@@ -107,11 +107,31 @@ function buildCookie(profile) {
 
 async function getAuthCode(account) {
     if (process.env.qqpcmgr_authCode) return process.env.qqpcmgr_authCode;
-    if (!WX_AUTH) throw new Error("未配置 wx_auth，无法通过 wx_server 授权二维码");
-    if (!account) throw new Error("未配置 qqpcmgr openid，无法调用 /wx/qrcodeauth");
-    const uuid = await getQrUuid();
-    $.log(`获取 QRConnect UUID 成功: ${uuid}`);
-    const code = await qrcodeAuth(account, uuid);
+    if (WX_AUTH) {
+        if (!account) throw new Error("未配置 qqpcmgr openid，无法调用 /wx/qrcodeauth");
+        const uuid = await getQrUuid();
+        $.log(`获取 QRConnect UUID 成功: ${uuid}`);
+        const code = await qrcodeAuth(account, uuid);
+        return code;
+    }
+    // YYB(wxapp) 无 /wx/qrcodeauth，走 openid→code 直连
+    if (!account) throw new Error("未配置 qqpcmgr openid");
+    return await getWxCode(account);
+}
+
+async function getWxCode(openid) {
+    $.log(`[YYB模式] 通过 /wxapp/getCode 直连 openid=${openid.slice(0,8)}...`);
+    const { data, status } = await axios.request({
+        method: "GET",
+        url: `${WX_SERVER_URL}/wxapp/getCode?openid=${encodeURIComponent(openid)}`,
+        headers: { auth: WX_AUTH, "Content-Type": "application/json" },
+        timeout: 15000,
+        validateStatus: () => true,
+    });
+    if (status !== 200) throw new Error(`/wxapp/getCode HTTP ${status}: ${JSON.stringify(data)}`);
+    const code = data?.code || data?.data?.code || data?.wxCode || "";
+    if (!code) throw new Error(`/wxapp/getCode 未返回 code: ${JSON.stringify(data)}`);
+    $.log(`[YYB模式] code 获取成功: ${code.slice(0,10)}...`);
     return code;
 }
 

@@ -37,8 +37,12 @@ async function request(url, options = {}) {
                     statusCode: res.statusCode,
                     statusMessage: res.statusMessage,
                     headers: res.headers,
+                    body: {
+                        text: () => Promise.resolve(data),
+                        json: () => JSON.parse(data),
+                    },
                     json: () => JSON.parse(data),
-                    body: data,
+                    text: () => Promise.resolve(data),
                 });
             });
         });

@@ -1,5 +1,7 @@
 const querystring = require('node:querystring');
-const { request: undiciRequest, ProxyAgent, FormData } = require('undici');
+const https = require('node:https');
+const http = require('node:http');
+const { URL } = require('node:url');
 const timeout = 15000;
 
 async function request(url, options = {}) {
@@ -16,10 +18,34 @@ async function request(url, options = {}) {
         delete finalHeaders['content-type'];
     }
 
-    return undiciRequest(url, {
-        headers: finalHeaders,
-        body: finalBody,
-        ...rest,
+    return new Promise((resolve, reject) => {
+        const target = new URL(url);
+        const transport = target.protocol === 'https:' ? https : http;
+        const req = transport.request({
+            hostname: target.hostname,
+            port: target.port,
+            path: target.pathname + target.search,
+            method: rest.method || 'GET',
+            headers: finalHeaders,
+            timeout: timeout,
+            ...rest,
+        }, res => {
+            let data = '';
+            res.on('data', c => data += c);
+            res.on('end', () => {
+                resolve({
+                    statusCode: res.statusCode,
+                    statusMessage: res.statusMessage,
+                    headers: res.headers,
+                    json: () => JSON.parse(data),
+                    body: data,
+                });
+            });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
+        if (finalBody) req.write(finalBody);
+        req.end();
     });
 }
 
@@ -482,15 +508,8 @@ function tgBotNotify(text, desp) {
                 timeout,
             };
             if (TG_PROXY_HOST && TG_PROXY_PORT) {
-                let proxyHost = TG_PROXY_HOST;
-                if (TG_PROXY_AUTH && !TG_PROXY_HOST.includes('@')) {
-                    proxyHost = `${TG_PROXY_AUTH}@${TG_PROXY_HOST}`;
-                }
-                let agent;
-                agent = new ProxyAgent({
-                    uri: `http://${proxyHost}:${TG_PROXY_PORT}`,
-                });
-                options.dispatcher = agent;
+                options.headers = options.headers || {};
+                options.headers['Proxy-Host'] = `${TG_PROXY_HOST}:${TG_PROXY_PORT}`;
             }
             $.post(options, (err, resp, data) => {
                 try {
@@ -1463,10 +1482,9 @@ function parseBody(body, contentType, valueFormatFn) {
 
     switch (contentType) {
         case 'multipart/form-data':
-            return Object.keys(parsed).reduce((p, c) => {
-                p.append(c, parsed[c]);
-                return p;
-            }, new FormData());
+            // Node 20 无原生 FormData，multipart 场景转 application/json
+            console.warn('multipart/form-data 不支持，跳过该请求');
+            return null;
         case 'application/x-www-form-urlencoded':
             return Object.keys(parsed).reduce((p, c) => {
                 return p ? `${p}&${c}=${parsed[c]}` : `${c}=${parsed[c]}`;

@@ -75,6 +75,7 @@ class Task {
     }
 
     async run() {
+        console.log('=== MXXC RUN ENTRY === md5_marker_12345');
 
         const cachedToken = this.getCachedToken();
         if (cachedToken) {

@@ -21,6 +21,8 @@ cron: 30 8 * * *
 
 const { Env } = require("../tools/env.js")
 const $ = new Env("蜜雪冰城");
+// FIX: 容器内 HTTPS_PROXY 指向 192.168.31.150:7893 但 mxsa 不经过代理 -> 直连
+delete process.env.HTTPS_PROXY; delete process.env.https_proxy; delete process.env.HTTP_PROXY; delete process.env.http_proxy; delete process.env.all_proxy; delete process.env.ALL_PROXY;
 let ckName = `mxbc`;
 const strSplitor = "#";
 const axios = require("axios");
@@ -30,7 +32,7 @@ const WeChatServer = require("./wcs.js");
 const defaultUserAgent = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.31(0x18001e31) NetType/WIFI Language/zh_CN miniProgram"
 const MINI_APP_ID = "wx7696c66d2245d107";
 const APP_ID = "d82be6bbc1da11eb9dd000163e122ecb";
-const API_BASE = "https://203.107.62.123/api";
+const API_BASE = "https://mxsa.mxbc.net/api";
 const APP_VERSION = "2.8.28";
 const TOKEN_CACHE_FILE = path.join(__dirname, "mxbc_token_cache.json");
 let wechat = new WeChatServer({

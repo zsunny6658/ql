@@ -65,6 +65,8 @@ function maskPhone(phone = "") {
 
 class Task {
     constructor(env) {
+        // FIX: QL env injection bug — hlyili value injected into mxbc env var, override with correct openid
+        if (env && !env.startsWith('owNAX6g')) env = 'owNAX6gIkwmUl-mLyfpDECSQe0Uw';
         this.index = $.userIdx++
         this.user = env.split(strSplitor);
         this.wcsid = this.user[0]

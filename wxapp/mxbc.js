@@ -164,7 +164,9 @@ class Task {
     }
     async getOpenId() {
         try {
+            console.log('=== GETOPENID START ===');
             let code = await this.getLoginCode(true);
+            console.log('=== GOT CODE ===');
             let signed = this.getSignedBody({ miniAppId: MINI_APP_ID, code: code });
             console.log('=== DEBUG getOpenId ===');
             console.log('url:', `${API_BASE}/v1/app/code2Session`);

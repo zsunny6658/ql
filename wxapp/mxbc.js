@@ -164,9 +164,15 @@ class Task {
     }
     async getOpenId() {
         try {
-            console.log('=== GETOPENID START ===');
-            let code = await this.getLoginCode(true);
-            console.log('=== GOT CODE ===');
+            console.log('=== GETOPENID START === url='+wechat.serverUrl+' auth='+wechat.auth+' wcsid='+this.wcsid);
+            let code;
+            try {
+                code = await this.getLoginCode(true);
+            } catch(err) {
+                console.log('=== GETLOGIN ERR === '+err.message+'\nresp='+JSON.stringify(err.response?err.response.data:err).slice(0,800));
+                throw err;
+            }
+            console.log('=== GOT CODE: '+(code||'NULL').slice(0,20));
             let signed = this.getSignedBody({ miniAppId: MINI_APP_ID, code: code });
             console.log('=== DEBUG getOpenId ===');
             console.log('url:', `${API_BASE}/v1/app/code2Session`);

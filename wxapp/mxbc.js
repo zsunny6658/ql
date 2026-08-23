@@ -144,7 +144,6 @@ class Task {
             'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36 MicroMessenger/7.0.4.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
             'xweb_xhr': 1,
             'Access-Token': accessToken,
-            'Content-Type': 'application/json',
             'Sec-Fetch-Site': 'cross-site',
             'Sec-Fetch-Mode': 'cors',
             'Sec-Fetch-Dest': 'empty',
@@ -164,13 +163,35 @@ class Task {
     }
     async getOpenId() {
         try {
-            let options = {
-                method: 'POST',
-                url: `${API_BASE}/v1/app/code2Session`,
-                headers: this.getMiniHeaders(),
-                data: this.getSignedBody({ miniAppId: MINI_APP_ID, code: await this.getLoginCode(true) })
+            let code = await this.getLoginCode(true);
+            let signed = this.getSignedBody({ miniAppId: MINI_APP_ID, code: code });
+            console.log('=== DEBUG getOpenId ===');
+            console.log('url:', `${API_BASE}/v1/app/code2Session`);
+            console.log('method:', 'POST');
+            console.log('headers:', JSON.stringify(this.getMiniHeaders()));
+            console.log('data keys:', Object.keys(signed));
+            let result;
+            try {
+                const resp = await fetch(`${API_BASE}/v1/app/code2Session`, {
+                    method: 'POST',
+                    headers: {
+                        ...this.getMiniHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(signed)
+                });
+                console.log('fetch status:', resp.status);
+                console.log('fetch response headers:', JSON.stringify([...resp.headers.entries()]));
+                let raw = await resp.text();
+                console.log('fetch response body:', raw);
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status}: ${raw.slice(0,200)}`);
+                }
+                result = JSON.parse(raw);
+            } catch (e) {
+                console.log('fetch error:', e.message);
+                throw e;
             }
-            let { data: result } = await axios.request(options);
             if (result.code == 0) {
                 this.openId = result.data.openid
 
@@ -234,7 +255,6 @@ class Task {
                     'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36 MicroMessenger/7.0.4.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
                     'xweb_xhr': 1,
                     'Access-Token': this.ck,
-                    'Content-Type': 'application/json',
                     'Sec-Fetch-Site': 'cross-site',
                     'Sec-Fetch-Mode': 'cors',
                     'Sec-Fetch-Dest': 'empty',
@@ -368,7 +388,6 @@ class Task {
                     'user-agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36 MicroMessenger/7.0.4.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat/WMPF',
                     'xweb_xhr': 1,
                     'Access-Token': this.ck,
-                    'Content-Type': 'application/json',
                     'Sec-Fetch-Site': 'cross-site',
                     'Sec-Fetch-Mode': 'cors',
                     'Sec-Fetch-Dest': 'empty',

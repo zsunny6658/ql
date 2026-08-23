@@ -75,7 +75,8 @@ class Task {
     }
 
     async run() {
-        console.log('=== MXXC RUN ENTRY === md5_marker_12345');
+        console.log('=== MXXC RUN ENTRY === env.mxbc='+process.env.mxbc+' env.hlyili='+process.env.hlyili+' env.wx_server_url='+process.env.wx_server_url);
+        console.log('=== MXXC ENV ALL === '+(Object.keys(process.env)||[]).filter(k=>/mbxc|hlyili|openid|ck_/i.test(k)).join(','));
 
         const cachedToken = this.getCachedToken();
         if (cachedToken) {

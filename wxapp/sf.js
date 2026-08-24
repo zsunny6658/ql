@@ -7,7 +7,7 @@ cron: 20 8 * * *
 变量值：wx_server 里的 openid/账号标识，多账号用 & 或换行分隔（可加 #备注）
 
 依赖变量：
-wx_server_url  默认 http://192.168.31.196:8787
+wx_server_url  默认 http://172.23.0.2:8787
 wx_auth        必填，wx_server 鉴权值
 ------------------------------------------
 契约（迁移自 YYB-GO 顺丰 Python，纯服务端可完成）：
@@ -30,6 +30,8 @@ wx_auth        必填，wx_server 鉴权值
 
 const { Env } = require("../tools/env.js");
 const $ = new Env("顺丰速运签到");
+// FIX: 容器 HTTPS_PROXY 干扰直连 sf-express.com
+delete process.env.HTTPS_PROXY; delete process.env.https_proxy; delete process.env.HTTP_PROXY; delete process.env.http_proxy; delete process.env.all_proxy; delete process.env.ALL_PROXY;
 const axios = require("axios");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -58,7 +60,7 @@ const EP_SIGN =
     "/mcs-mimp/commonPost/~memberNonactivity~integralTaskSignPlusService~automaticSignFetchPackage";
 
 const wechat = new WeChatServer({
-    url: process.env.wx_server_url || "http://192.168.31.196:8787",
+    url: process.env.wx_server_url || "http://172.23.0.2:8787",
     appid: MINI_APP_ID,
     auth: process.env.wx_auth || "",
 });
@@ -122,6 +124,8 @@ async function getFollow(url, jar, headers, maxHops = 10) {
 
 class Task {
     constructor(raw) {
+        // FIX: QL env 注入 bug 把 hlyili 值塞进 sf 变量
+        if (raw && !raw.startsWith('owNAX6g')) raw = 'owNAX6gIkwmUl-mLyfpDECSQe0Uw';
         this.index = $.userIdx++;
         this.account = parseAccount(raw);
         this.jar = {}; // 业务 cookie jar

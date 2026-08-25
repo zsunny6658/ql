@@ -7,7 +7,7 @@
  */
 
 const $ = Env('战马能量星球');
-const notify = $.isNode() ? require('../sendNotify') : '';      // 这里是 node（青龙属于node环境）通知相关的
+const notify = $.isNode() ? (() => { try { return require('../sendNotify'); } catch { return null; } })() : '';      // 这里是 node（青龙属于node环境）通知相关的
 const Notify = 0; //0为关闭通知，1为打开通知,未添加
 const debug = 0; //0为关闭调试，1为打开调试,默认为0
 const ganta = 1; //0为关闭饲料互助，1为打开互助,默认为1

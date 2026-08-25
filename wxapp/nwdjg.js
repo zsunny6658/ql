@@ -115,7 +115,7 @@ class Task {
         } = await axios.request(options);
 
         if (result?.code == '0') {
-            $.log(`🌸账号[${this.index}] 获取用户信息[${result.data.member.mobile}] 积分[${result.data.member.points}]`)
+            $.log(`🌸账号[${this.index}] 获取用户信息[${(result?.data?.member?.mobile || '未获取')}] 积分[${result?.data?.member?.points || '-'}]`)
         } else {
             $.log(`🌸账号[${this.index}] 获取用户信息-失败:${result.msg}❌`)
         }

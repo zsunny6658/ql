@@ -1,5 +1,54 @@
 const querystring = require('node:querystring');
-const { request: undiciRequest, ProxyAgent, FormData } = require('undici');
+let undiciRequest, ProxyAgent, FormData, USE_UNDICI = true;
+try {
+  const undici = require('undici');
+  undiciRequest = undici.request;
+  ProxyAgent = undici.ProxyAgent;
+  FormData = undici.FormData;
+} catch (e) {
+  USE_UNDICI = false;
+  console.warn('[sendNotify] undici require failed: ' + e.message + ' — fallback to node http/https');
+  const http = require('node:http');
+  const https = require('node:https');
+  undiciRequest = function(url, opts = {}) {
+    const isHttps = String(url).startsWith('https');
+    const lib = isHttps ? https : http;
+    const method = (opts.method || 'GET').toUpperCase();
+    return new Promise((resolve, reject) => {
+      let body = null;
+      if (opts.body) body = Buffer.isBuffer(opts.body) ? opts.body : Buffer.from(opts.body);
+      const req = lib.request(url, {
+        method: method,
+        headers: opts.headers || {},
+      }, (res) => {
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => {
+          const buf = Buffer.concat(chunks);
+          resolve({
+            statusCode: res.statusCode,
+            statusMessage: res.statusMessage,
+            headers: res.headers,
+            body: {
+              text: async () => buf.toString('utf8'),
+              json: async () => {
+                try { return JSON.parse(buf.toString('utf8')); }
+                catch { return buf.toString('utf8'); }
+              },
+              bytes: async () => buf,
+            },
+          });
+        });
+      });
+      req.on('error', reject);
+      req.setTimeout(opts.timeout || 15000, () => { req.destroy(new Error('timeout')); });
+      if (body) req.write(body);
+      req.end();
+    });
+  };
+  ProxyAgent = null;
+  FormData = null;
+}
 const timeout = 15000;
 
 async function request(url, options = {}) {

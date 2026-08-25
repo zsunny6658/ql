@@ -133,12 +133,15 @@ class Task {
 
 
             if (result?.msg === "success") {
-                this.valid = true;
-                this.customId = result?.data.resMemberInfo.memberId;
-                $.log(`账号[${this.index}] 查询个人信息成功，积分：${result?.data?.memberInfo?.pointInfo?.point}`)
+                this.customId = result?.data?.resMemberInfo?.memberId || "";
+                if (this.customId) {
+                    this.valid = true;
+                    $.log(`账号[${this.index}] 查询个人信息成功，积分：${result?.data?.memberInfo?.pointInfo?.point}`)
+                } else {
+                    $.log(`账号[${this.index}] 该微信账号尚未注册慕斯会员(resMemberInfo为空)，跳过签到`)
+                }
             } else {
                 $.log(`账号[${this.index}] 查询个人信息失败：${result?.msg || JSON.stringify(result)}`)
-                this.valid = false
             }
 
         } catch (e) {
@@ -180,6 +183,10 @@ class Task {
     }
 
     async doSign() {
+        if (!this.customId) {
+            $.log(`账号[${this.index}] 无会员ID，跳过签到`)
+            return
+        }
         try {
             const timestamp = new Date().getTime();
             const eventAttr2 = $.time('yyyy.MM.dd')

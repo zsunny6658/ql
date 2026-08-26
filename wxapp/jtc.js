@@ -62,17 +62,56 @@ function short(v, n = 200) {
     const t = typeof v === "string" ? v : JSON.stringify(v);
     return !t ? "" : t.length > n ? `${t.slice(0, n)}...` : t;
 }
-/** 解 JWT 的 sub（一个 JSON 字符串）里的 userId */
+/** 解 JWT 的 sub（一个 JSON 字符串）里的 userId；兼容多段结构 */
 function userIdFromJwt(token) {
     try {
-        let p = String(token).split(".")[1];
-        p += "=".repeat((4 - (p.length % 4)) % 4);
-        const payload = JSON.parse(Buffer.from(p.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
-        const sub = typeof payload.sub === "string" ? JSON.parse(payload.sub) : payload.sub || {};
-        return String(sub.userId || payload.userId || "");
-    } catch (e) {
-        return "";
+        // 1) 标准 JWT: payload.sub 是 JSON {"userId":"..."}
+        const p1 = String(token).split(".")[1];
+        if (p1) {
+            const pad = "=".repeat((4 - (p1.length % 4)) % 4);
+            const payload = JSON.parse(Buffer.from(p1.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64").toString("utf8"));
+            const sub = typeof payload.sub === "string" ? JSON.parse(payload.sub) : payload.sub || {};
+            if (sub.userId || payload.userId) return String(sub.userId || payload.userId);
+            // 2) sub 可能用 unionId
+            if (sub.unionId) return String(sub.unionId);
+            if (payload.userId) return String(payload.userId);
+        }
+    } catch (e) { /* fall through */ }
+    return "";
+}
+/** 多路提取 token，兼容后端结构变化（obj.token / obj.sytToken / data.token） */
+function extractToken(d) {
+    if (!d || typeof d !== "object") return "";
+    if (d.obj) {
+        if (d.obj.token) return d.obj.token;
+        if (d.obj.sytToken) return d.obj.sytToken;
+        if (d.obj.jwt) return d.obj.jwt;
     }
+    if (d.data) {
+        if (d.data.token) return d.data.token;
+        if (d.data.sytToken) return d.data.sytToken;
+    }
+    if (d.token) return d.token;
+    if (d.sytToken) return d.sytToken;
+    return "";
+}
+/** 从 d 里任意一层取 unionId 作为 userId 兜底（用于后端返回 unionId 而非 JWT 的兼容场景） */
+function extractUserIdFromResp(d) {
+    if (!d || typeof d !== "object") return "";
+    const walk = (o, depth = 0) => {
+        if (!o || typeof o !== "object" || depth > 4) return "";
+        if (o.userId) return String(o.userId);
+        if (o.unionId) return String(o.unionId);
+        for (const k of ["userId","unionId"]) {
+            if (k in o) return String(o[k]);
+        }
+        for (const v of Object.values(o)) {
+            const r = walk(v, depth + 1);
+            if (r) return r;
+        }
+        return "";
+    };
+    return walk(d);
 }
 
 class Task {
@@ -101,9 +140,9 @@ class Task {
             timeout: 20000, validateStatus: () => true,
         });
         const d = res.data || {};
-        this.token = (d.obj && d.obj.token) || (d.data && d.data.token) || "";
+        this.token = extractToken(d);
         if (!this.token) throw new Error(`登录失败: ${d.message || short(d)}`);
-        this.userId = userIdFromJwt(this.token);
+        this.userId = userIdFromJwt(this.token) || extractUserIdFromResp(d);
         if (!this.userId) throw new Error(`登录 token 未解析出 userId: ${short(d)}`);
         const cache = readCache();
         cache[this.account.openid] = { token: this.token, userId: this.userId, updatedAt: new Date().toISOString() };

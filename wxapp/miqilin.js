@@ -78,7 +78,7 @@ class Task {
         //post方法
         let { data: result } = await axios.request(options);
 
-        $.log(`转发:${result?.code != 200 ? "转发失败" + result?.message : "转发成功!"}`)
+        $.log(`转发:${result?.code != 200 ? "转发失败 code="+result?.code+" msg="+(result?.message||result?.msg||JSON.stringify(result).slice(0,200)) : "转发成功!"}`)
     }
     async getUserToken(code) {
         let options = {

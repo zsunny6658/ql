@@ -529,14 +529,27 @@ class Task {
                 $.log(`账号[${this.index}] 缓存token失效，重新登录`);
             }
         }
-        if (!this.token) await this.loginByWxCode();
+        if (!this.token) {
+            try { await this.loginByWxCode(); }
+            catch (e) { $.log(`账号[${this.index}] 登录失败: ${e.message || e}`); return; }
+        }
         if (!this.token) return;
 
         try {
             await this.signIn();
         } catch (e) {
             $.log(`账号[${this.index}] 签到失败${e.code ? `(${e.code})` : ""}: ${e.message || e}`);
-            if (tokenError(e)) this.removeCachedToken();
+            if (tokenError(e)) {
+                this.removeCachedToken();
+                // 服务端已判 token 过期：立刻重登 + 重试一次签到
+                try {
+                    await this.loginByWxCode();
+                    $.log(`账号[${this.index}] token失效已重登，重试签到`);
+                    await this.signIn();
+                } catch (e2) {
+                    $.log(`账号[${this.index}] 重登后签到仍失败: ${e2.message || e2}`);
+                }
+            }
         }
     }
 }

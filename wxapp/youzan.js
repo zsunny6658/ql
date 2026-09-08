@@ -106,6 +106,7 @@ class Task {
             Accept: "application/json, text/plain, */*",
             "User-Agent": USER_AGENT,
             Referer: `https://servicewechat.com/${this.account.appid}/0/page-frame.html`,
+            'Extra-Data': this.cred ? JSON.stringify(this.cred.extraData) : '',
         };
     }
 
@@ -162,6 +163,15 @@ class Task {
             accessToken: d.accessToken,
             sid: d.sessionId,
             kdtId: String(d.kdtId || kdt),
+            "extraData": {
+                "is_weapp": 1,
+                "sid": d.sessionId,
+                "version": "2.216.4.101",
+                "client": "weapp",
+                "bizEnv": "wsc",
+                "uuid": d.unionId,
+                "ftime": Date.now()
+            }
         };
         const cache = readCache();
         cache[`${this.account.openid}#${this.account.appid}`] = { ...this.cred, updatedAt: new Date().toISOString() };
@@ -195,7 +205,7 @@ class Task {
         const key = `${this.account.openid}#${this.account.appid}`;
         const cached = readCache()[key];
         if (!this.cred && cached && cached.accessToken) {
-            this.cred = { accessToken: cached.accessToken, sid: cached.sid, kdtId: cached.kdtId };
+            this.cred = { accessToken: cached.accessToken, sid: cached.sid, kdtId: cached.kdtId, extraData: cached.extraData };
             if (await this.checkSession()) {
                 this.log("使用缓存ck");
                 return;

@@ -24,6 +24,9 @@ wx_auth        必填，wx_server 鉴权值
   播种  GET  /applet/game/dendrobium/sowing （原脚本带作者个人 inviteUserId 邀请码，已剔除）
   查询  GET  /applet/game/dendrobium/signIn/getUserSignInLog -> data.todaySignInStatus
   签到  GET  /applet/game/dendrobium/signIn -> code==200 成功
+  任务列表 GET /applet/game/dendrobium/task/list -> code==200 成功
+  文章列表 GET /applet/game/dendrobium/article/list
+  浏览  GET  /applet/game/dendrobium/article/completeRead -> code==200成功
 原脚本的推文浏览/买肥料/自动施肥属养成任务，非签到，已略去。
 ------------------------------------------
 */
@@ -54,6 +57,9 @@ const EP_DEN_GET = "/applet/game/dendrobium/get";
 const EP_DEN_SOW = "/applet/game/dendrobium/sowing";
 const EP_DEN_SIGN_LOG = "/applet/game/dendrobium/signIn/getUserSignInLog";
 const EP_DEN_SIGN = "/applet/game/dendrobium/signIn";
+const EP_DEN_TASK_LIST = "/applet/game/dendrobium/task/list";
+const EP_DEN_ARTICLE_LIST = "/applet/game/dendrobium/article/list";
+const EP_DEN_COMPLETEREAD = "/applet/game/dendrobium/article/completeRead";
 
 const wechat = new WeChatServer({
     url: process.env.wx_server_url || "http://192.168.31.196:8787",
@@ -153,6 +159,7 @@ class Task {
             const res = await this.request("GET", EP_USERINFO);
             if (res && res.code === 200 && res.data) {
                 this.log(`ck 有效：${(res.data.userName || res.data.nickName || "用户")}`);
+                this.unregistered = false;
                 return true;
             }
             const msg = res?.msg || res?.message || short(res);
@@ -221,6 +228,67 @@ class Task {
             this.log(`⚠️ 石斛签到跳过：${e.message || e}`);
         }
     }
+
+    async getTaskList() {
+        try {
+            const res = await this.request("GET", EP_DEN_TASK_LIST);
+            if (res && res.code === 200 && Array.isArray(res.data)) {
+                const tasks = res.data;
+                // this.log(`✅ 石斛任务列表获取成功，共 ${tasks.length} 个任务`);
+                return tasks;
+            } else {
+                const msg = res?.msg || res?.message || short(res);
+                this.log(`⚠️ 石斛任务列表获取失败：${msg}`);
+                return [];
+            }
+        } catch (e) {
+            this.log(`⚠️ 石斛任务列表获取异常：${e.message || e}`);
+            return [];
+        }
+    }
+
+    async articleList() {
+        try {
+            const res = await this.request("GET", EP_DEN_ARTICLE_LIST);
+
+            if (res && res.code === 200 && Array.isArray(res.data.records)) {
+                const articles = res.data.records;
+                this.log(`✅ 石斛文章列表获取成功，共 ${articles.length} 篇文章`);
+                return articles;
+            } else {
+                const msg = res?.msg || res?.message || short(res);
+                this.log(`⚠️ 石斛文章列表获取失败：${msg}`);
+                return [];
+            }
+        } catch (e) {
+            this.log(`⚠️ 石斛文章列表获取异常：${e.message || e}`);
+            return [];
+        }
+    }
+
+    async dendrobiumRead(url) {
+        try {
+            // 模拟浏览文章
+            await axios.request({
+                method: "GET",
+                url: url,
+                headers: {
+                    Connection: "keep-alive",
+                }
+            });
+            await $.wait(3000, 10000); // 模拟阅读时间
+            const info = await this.request("GET", EP_DEN_COMPLETEREAD);
+            if (info.code === 200 && info.msg) {
+                this.log(`✅ 石斛阅读，${info.msg}`);
+            } else {
+                this.log(`✅ 石斛阅读已完成`);
+            }
+
+        } catch (e) {
+            this.log(`⚠️ 石斛阅读跳过：${e.message || e}`);
+        }
+    }
+
     async ensureLogin() {
         const cached = readCache()[this.account.openid] || {};
         if (!this.token && cached.token) {
@@ -243,6 +311,34 @@ class Task {
             }
             await this.signAward();
             await this.dendrobiumSign();
+            // 获取石斛任务列表并处理
+            const taskList = await this.getTaskList();
+            if (taskList.length > 0) {
+                for (const task of taskList) {
+                    if (task.taskName.match(/浏览/)) {
+                        if (task.status == 0) {
+                            this.log(`ℹ️ 石斛任务：${task.taskName}，未完成，开始阅读文章`);
+                            var articleList = await this.articleList();
+                            if (articleList.length > 0) {
+                                this.log(`ℹ️ 开始石斛文章阅读，共 ${articleList.length} 篇文章, 计划阅读前 ${task.times} 篇`);
+                                for (var i = 0; i < task.times; i++) {
+                                    var article = articleList[i];
+                                    if (!article) break;
+                                    this.log(`ℹ️ 阅读文章 ${i + 1}/3：${article.articleTitle || "未知标题"}`);
+                                    await this.dendrobiumRead(article.articleUrl);
+                                    await $.wait(1000, 3000);
+                                }
+                            } else {
+                                this.log("ℹ️ 没有可阅读的石斛文章");
+                            }
+                        } else {
+                            this.log(`ℹ️ 石斛任务：${task.taskName}，已完成`);
+                        }
+                    }
+                }
+            }
+
+
         } catch (e) {
             if (String(e.message).startsWith("NO_ACCOUNT")) {
                 this.log("⚠️ 该微信号还没在甜润世界注册/激活会员，先在小程序里登录一次再跑");

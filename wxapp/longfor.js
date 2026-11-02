@@ -315,6 +315,13 @@ function tokenError(error) {
     return /token|登录|授权|未登录|801007|900005|900006/i.test(String(error?.message || error));
 }
 
+// 服务端限流 / 活动拥堵类错误：短时间并发签到常见，可等待后重试。
+function busyError(error) {
+    return /火爆|稍后|稍候|busy|频繁|限流|too ?many|rate ?limit|429/i.test(
+        String(error?.message || error)
+    );
+}
+
 class Task {
     constructor(account) {
         this.index = $.userIdx++;
@@ -510,11 +517,25 @@ class Task {
         const dxToken = await getDxToken();
         $.log(`账号[${this.index}] 风控指纹${dxToken ? "获取成功" : "获取失败，直接尝试"}`);
 
-        const result = await this.taskPost("/openapi/task/v1/signature/clock", { activity_no: this.activityNo }, dxToken);
-        if (!ok(result?.code)) {
-            const err = new Error(result?.message || result?.msg || JSON.stringify(result));
-            err.code = result?.code;
-            throw err;
+        // 服务端在账号连续签到时可能返回"活动太火爆，请稍后再试"。
+        // 这里对拥堵类错误做有限次退避重试（最多 3 次），其余错误直接抛出。
+        let result;
+        for (let attempt = 1; ; attempt++) {
+            try {
+                result = await this.taskPost("/openapi/task/v1/signature/clock", { activity_no: this.activityNo }, dxToken);
+                if (ok(result?.code)) break;
+                const err = new Error(result?.message || result?.msg || JSON.stringify(result));
+                err.code = result?.code;
+                throw err;
+            } catch (e) {
+                if (busyError(e) && attempt < 3) {
+                    const waitMs = attempt * 10000 + Math.floor(Math.random() * 5000);
+                    $.log(`账号[${this.index}] 签到遇到限流(${e.message})，等待 ${(waitMs / 1000).toFixed(1)} 秒后重试(${attempt}/3)`);
+                    await $.wait(waitMs);
+                    continue;
+                }
+                throw e;
+            }
         }
         $.log(`账号[${this.index}] 签到成功${this.rewardText(result?.data?.reward_info) ? `: ${this.rewardText(result.data.reward_info)}` : ""}`);
     }
@@ -556,8 +577,12 @@ class Task {
 
 !(async () => {
     $.checkEnv(ckName);
-    for (const account of $.userList) {
-        await new Task(account).run();
+    // 多账号顺序执行，账号之间加入随机间隔，避免短时间连续请求触发
+    // 服务端"活动太火爆，请稍后再试"限流。
+    const ACCOUNT_GAP_MS = [8000, 20000];
+    for (let i = 0; i < $.userList.length; i++) {
+        if (i > 0) await $.wait(ACCOUNT_GAP_MS[0], ACCOUNT_GAP_MS[1]);
+        await new Task($.userList[i]).run();
     }
 })()
     .catch((e) => $.log(e.message || e))

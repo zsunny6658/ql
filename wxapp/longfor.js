@@ -191,8 +191,17 @@ function dxShorten(data = {}) {
     return output;
 }
 
-function dxSystemInfo() {
-    return {
+// 按账号(scope)派生出稳定的伪设备参数：同一账号每次运行结果一致，
+// 不同账号之间不同。避免多账号共用同一套设备特征被服务端判为"同一设备"。
+function dxScopeSeed(scope) {
+    const s = String(scope || "");
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h;
+}
+
+function dxSystemInfo(scope = "") {
+    const base = {
         brand: "microsoft",
         model: "Windows WeChat",
         pixelRatio: 1,
@@ -210,13 +219,23 @@ function dxSystemInfo() {
         benchmarkLevel: 1,
         batteryLevel: 100,
     };
+    if (!scope) return base;
+    // 以 scope 为种子，挑选一组合理且稳定的设备差异
+    const seed = dxScopeSeed(scope);
+    const devices = [
+        { brand: "microsoft", model: "Windows WeChat", system: "Windows 10 x64", screenWidth: 414, screenHeight: 896, windowWidth: 414, windowHeight: 896, pixelRatio: 1, batteryLevel: 100, benchmarkLevel: 1, fontSizeSetting: 16 },
+        { brand: "microsoft", model: "Windows WeChat", system: "Windows 10 x64", screenWidth: 375, screenHeight: 812, windowWidth: 375, windowHeight: 812, pixelRatio: 2, batteryLevel: 87, benchmarkLevel: 1, fontSizeSetting: 16 },
+        { brand: "microsoft", model: "Windows WeChat", system: "Windows 10 x64", screenWidth: 390, screenHeight: 844, windowWidth: 390, windowHeight: 844, pixelRatio: 3, batteryLevel: 92, benchmarkLevel: 2, fontSizeSetting: 14 },
+        { brand: "microsoft", model: "Windows WeChat", system: "Windows 11 x64", screenWidth: 360, screenHeight: 780, windowWidth: 360, windowHeight: 780, pixelRatio: 3, batteryLevel: 76, benchmarkLevel: 1, fontSizeSetting: 18 },
+    ];
+    return { ...base, ...devices[seed % devices.length] };
 }
 
 async function dxCollect(options = {}) {
     const start = Date.now();
     const data = {
         networkType: "wifi",
-        ...dxSystemInfo(),
+        ...dxSystemInfo(options.scope),
     };
     if (options.gps) data.gps = process.env.longfor_gps || "116.397128,39.916527";
     data.collectTime = Date.now() - start;
@@ -225,22 +244,27 @@ async function dxCollect(options = {}) {
 
 class MiniDxConstId {
     constructor(options = {}) {
+        // scope 用于隔离不同账号的顶象指纹/令牌：同一进程内多账号必须各用各的
+        // lid，否则会被服务端判定为"同一设备"，第二个账号签到报
+        // 801810 活动太火爆（明日再来）。
+        this.scope = options.scope || "";
         this.options = { ...DX_MINI_CONFIG, ...options };
         this.options.appId = this.options.appId || this.options.appKey;
         if (!this.options.server || !this.options.appId) throw new Error("missing dx server/appId");
     }
 
     getToken() {
-        return DX_STORAGE.get(DX_TOKEN_KEY) || "";
+        return DX_STORAGE.get(DX_TOKEN_KEY + ":" + this.scope) || "";
     }
 
     setToken(token) {
-        DX_STORAGE.set(DX_TOKEN_KEY, token);
+        DX_STORAGE.set(DX_TOKEN_KEY + ":" + this.scope, token);
     }
 
     async getLid() {
-        const lid = DX_STORAGE.get(DX_LID_KEY) || `${Date.now()}${dxMakeLocalId()}`;
-        DX_STORAGE.set(DX_LID_KEY, lid);
+        const key = DX_LID_KEY + ":" + this.scope;
+        const lid = DX_STORAGE.get(key) || `${Date.now()}${dxMakeLocalId()}${this.scope ? "-" + this.scope : ""}`;
+        DX_STORAGE.set(key, lid);
         return lid;
     }
 
@@ -302,9 +326,9 @@ class MiniDxConstId {
     }
 }
 
-async function getDxToken() {
+async function getDxToken(scope = "") {
     if (process.env.longfor_dx_token) return process.env.longfor_dx_token;
-    return new MiniDxConstId().generate();
+    return new MiniDxConstId({ scope }).generate();
 }
 
 function ok(code) {
@@ -514,7 +538,7 @@ class Task {
         $.log(`账号[${this.index}] 活动: ${pageInfo.task_name || "签到"} 今日=${this.todaySigned(pageInfo) ? "已签到" : "未签到"}`);
         if (this.todaySigned(pageInfo)) return;
 
-        const dxToken = await getDxToken();
+        const dxToken = await getDxToken(this.account);
         $.log(`账号[${this.index}] 风控指纹${dxToken ? "获取成功" : "获取失败，直接尝试"}`);
 
         // 服务端在账号连续签到时可能返回"活动太火爆，请稍后再试"。

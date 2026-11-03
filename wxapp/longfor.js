@@ -319,7 +319,9 @@ class MiniDxConstId {
             return data.data;
         }
         if (status === -4 && data.data) {
-            DX_STORAGE.set(DX_LID_KEY, data.data);
+            // 顶象返回 -4 表示当前 lid 已失效，服务端下发新 lid。
+            // 必须存到本账号的 key（带 scope），否则多账号互相污染。
+            DX_STORAGE.set(DX_LID_KEY + ":" + this.scope, data.data);
             return this.detect();
         }
         return this.detect();
